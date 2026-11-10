@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 그린 스쿨 - SDG13 기후변화대응</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        green: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for energy stats -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
+
+    <!-- Header / Navbar -->
+    <header class="bg-green-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">
+                    🌱
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">스마트 그린 스쿨</h1>
+                    <p class="text-xs text-green-200">SDG 13 기후변화대응 | 교내 에너지 절감 플랫폼</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="toggleSimulation()" id="sim-btn" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1 shadow-sm">
+                    <i class="fa-solid fa-play"></i> AI 시뮬레이션 시작
+                </button>
+                <button onclick="addRoom()" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-2 rounded-lg font-medium transition flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> 구역 추가
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto w-full px-4 py-6 flex-grow space-y-6">
+
+        <!-- Stat Cards Banner -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">에너지 낭비 구역</p>
+                    <p class="text-2xl font-bold text-amber-600 mt-1" id="wasting-count">0곳</p>
+                </div>
+                <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500 text-xl">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">누적 탄소 절감량</p>
+                    <p class="text-2xl font-bold text-green-600 mt-1" id="saved-carbon">0.0 <span class="text-sm font-normal text-slate-500">kg</span></p>
+                </div>
+                <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 text-xl">
+                    <i class="fa-solid fa-leaf"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">절감한 전기 요금</p>
+                    <p class="text-2xl font-bold text-blue-600 mt-1" id="saved-cost">0 <span class="text-sm font-normal text-slate-500">원</span></p>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500 text-xl">
+                    <i class="fa-solid fa-won-sign"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">전체 교실 수</p>
+                    <p class="text-2xl font-bold text-slate-700 mt-1" id="total-rooms-count">0곳</p>
+                </div>
+                <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 text-xl">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Action Bar -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-2">
+                <span class="text-sm font-medium text-slate-700">필터:</span>
+                <button onclick="filterRooms('all')" id="filter-all" class="filter-btn text-xs px-3 py-1.5 rounded-full font-semibold bg-slate-800 text-white">전체</button>
+                <button onclick="filterRooms('wasting')" id="filter-wasting" class="filter-btn text-xs px-3 py-1.5 rounded-full font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">낭비 중</button>
+                <button onclick="filterRooms('occupied')" id="filter-occupied" class="filter-btn text-xs px-3 py-1.5 rounded-full font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">재실 중</button>
+            </div>
+            
+            <button onclick="turnOffAllWasting()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-4 py-2 rounded-xl font-semibold transition shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-power-off"></i> 모든 빈 교실 전원 차단
+            </button>
+        </div>
+
+        <!-- Classroom Grid Section -->
+        <section>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes text-green-600"></i> 구역별 실시간 제어
+                </h2>
+                <span class="text-xs text-slate-400">센서 상태 1초 주기 업데이트</span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="classroom-grid">
+                <!-- JS dynamically injects room cards -->
+            </div>
+        </section>
+
+        <!-- Chart Section -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-blue-500"></i> 시간대별 탄소 절감 추이 (kg CO2)
+            </h3>
+            <div class="w-full h-64">
+                <canvas id="carbonChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Ethics & Privacy Card -->
+        <section class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex items-start space-x-3">
+            <div class="text-emerald-600 text-xl mt-0.5">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="text-xs text-emerald-900 space-y-1">
+                <h4 class="font-bold text-sm">🔒 데이터 프라이버시 및 개인정보 보호 윤리 지침</h4>
+                <p>
+                    본 모니터링 시스템은 학생 및 교직원의 프라이버시 보호를 최우선으로 고려합니다.
+                    영상 카메라는 사용하지 않으며, <strong>재실 여부 감지 센서(PIR 모션 센서) 및 전력 스마트 미터</strong> 데이터만을 수집합니다.
+                    특정 개인의 신원이나 행위 데이터는 절대로 기록되거나 저장되지 않습니다.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 text-center text-xs text-slate-400">
+        <p>© 2026 Smart Green School Project | SDG 13 Climate Action</p>
+    </footer>
+
+    <!-- Script Logic -->
+    <script>
+        // Initial Room Data
+        let rooms = [
+            { id: 1, name: "1학년 1반", isOccupied: false, light: true, ac: true },
+            { id: 2, name: "과학실", isOccupied: false, light: true, ac: false },
+            { id: 3, name: "음악실", isOccupied: true, light: true, ac: true },
+            { id: 4, name: "2학년 3반", isOccupied: false, light: false, ac: false },
+            { id: 5, name: "컴퓨터실", isOccupied: false, light: true, ac: true },
+            { id: 6, name: "도서관", isOccupied: true, light: true, ac: true }
+        ];
+
+        let totalSavedCarbon = 0.0;
+        let currentFilter = 'all';
+        let simulationInterval = null;
+        let chart;
+
+        // Initialize Chart.js
+        function initChart() {
+            const ctx = document.getElementById('carbonChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '현재'],
+                    datasets: [{
+                        label: '누적 절감량 (kg CO2)',
+                        data: [0.5, 1.2, 2.1, 3.5, 4.2, 5.0, totalSavedCarbon],
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Update dashboard UI counters
+        function updateDashboard() {
+            const wastingRooms = rooms.filter(r => !r.isOccupied && (r.light || r.ac));
+            document.getElementById('wasting-count').textContent = `${wastingRooms.length}곳`;
+            document.getElementById('saved-carbon').textContent = totalSavedCarbon.toFixed(1);
+            
+            // 1kg CO2 saved ~= approx 250 KRW in electricity cost
+            const savedCost = Math.round(totalSavedCarbon * 250);
+            document.getElementById('saved-cost').textContent = savedCost.toLocaleString();
+            document.getElementById('total-rooms-count').textContent = `${rooms.length}곳`;
+
+            if (chart) {
+                chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1] = totalSavedCarbon;
+                chart.update();
+            }
+        }
+
+        // Filter Rooms
+        function filterRooms(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-white');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            document.getElementById(`filter-${type}`).classList.remove('bg-slate-100', 'text-slate-600');
+            document.getElementById(`filter-${type}`).classList.add('bg-slate-800', 'text-white');
+            renderRooms();
+        }
+
+        // Render Room Cards
+        function renderRooms() {
+            const grid = document.getElementById('classroom-grid');
+            grid.innerHTML = '';
+
+            let filteredRooms = rooms;
+            if (currentFilter === 'wasting') {
+                filteredRooms = rooms.filter(r => !r.isOccupied && (r.light || r.ac));
+            } else if (currentFilter === 'occupied') {
+                filteredRooms = rooms.filter(r => r.isOccupied);
+            }
+
+            if (filteredRooms.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400">
+                        <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
+                        <p class="text-sm">해당 조건의 구역이 없습니다.</p>
+                    </div>
+                `;
+                updateDashboard();
+                return;
+            }
+
+            filteredRooms.forEach(room => {
+                const isWasting = !room.isOccupied && (room.light || room.ac);
+
+                let statusBadge = '';
+                if (room.isOccupied) {
+                    statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 재실 중</span>`;
+                } else if (isWasting) {
+                    statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500 animate-bounce"></span> 낭비 경고</span>`;
+                } else {
+                    statusBadge = `<span class="bg-slate-100 text-slate-500 text-xs px-2.5 py-1 rounded-full font-medium">전원 OFF</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl p-5 border transition-all duration-200 shadow-sm ${
+                    isWasting ? 'border-amber-400 bg-amber-50/20 shadow-md ring-2 ring-amber-100' : 'border-slate-100 hover:border-slate-200'
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            ${room.name}
+                        </h3>
+                        ${statusBadge}
+                    </div>
+
+                    ${isWasting ? `
+                        <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded-xl mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                            <span>AI 감지: 사람이 없으나 전력이 소비 중입니다.</span>
+                        </div>
+                    ` : '<div class="h-2"></div>'}
+
+                    <!-- Occupancy Toggle Simulator -->
+                    <div class="flex justify-between items-center text-xs text-slate-500 mb-4 bg-slate-50 p-2 rounded-xl">
+                        <span>사람 유무 센서:</span>
+                        <button onclick="toggleOccupancy(${room.id})" class="px-2.5 py-1 rounded-lg border font-semibold transition ${
+                            room.isOccupied ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-slate-200 border-slate-300 text-slate-600'
+                        }">
+                            ${room.isOccupied ? '👤 사람이 있음' : '🚪 빈 방 (공실)'}
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                            <span class="text-xs font-semibold text-slate-600 flex items-center gap-2">
+                                <i class="fa-regular fa-lightbulb text-amber-500"></i> 조명 (Lighting)
+                            </span>
+                            <button onclick="toggleDevice(${room.id}, 'light')" class="px-3 py-1 rounded-lg text-xs font-bold transition ${
+                                room.light ? 'bg-green-600 text-white shadow-sm' : 'bg-slate-200 text-slate-500'
+                            }">
+                                ${room.light ? 'ON' : 'OFF'}
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                            <span class="text-xs font-semibold text-slate-600 flex items-center gap-2">
+                                <i class="fa-solid fa-snowflake text-blue-400"></i> 냉·난방기 (HVAC)
+                            </span>
+                            <button onclick="toggleDevice(${room.id}, 'ac')" class="px-3 py-1 rounded-lg text-xs font-bold transition ${
+                                room.ac ? 'bg-green-600 text-white shadow-sm' : 'bg-slate-200 text-slate-500'
+                            }">
+                                ${room.ac ? 'ON' : 'OFF'}
+                            </button>
+                        </div>
+                    </div>
+
+                    ${isWasting ? `
+                        <button onclick="quickTurnOff(${room.id})" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs py-2 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-leaf"></i> 전원 차단하여 탄소 절감
+                        </button>
+                    ` : ''}
+                `;
+
+                grid.appendChild(card);
+            });
+
+            updateDashboard();
+        }
+
+        // Toggle device status
+        function toggleDevice(roomId, deviceType) {
+            const room = rooms.find(r => r.id === roomId);
+            if (room) {
+                room[deviceType] = !room[deviceType];
+                renderRooms();
+            }
+        }
+
+        // Toggle Occupancy
+        function toggleOccupancy(roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            if (room) {
+                room.isOccupied = !room.isOccupied;
+                renderRooms();
+            }
+        }
+
+        // Quick turn off for single room
+        function quickTurnOff(roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            if (room) {
+                if (room.light) {
+                    room.light = false;
+                    totalSavedCarbon += 0.2;
+                }
+                if (room.ac) {
+                    room.ac = false;
+                    totalSavedCarbon += 0.8;
+                }
+                renderRooms();
+            }
+        }
+
+        // Turn off all wasting rooms at once
+        function turnOffAllWasting() {
+            let count = 0;
+            rooms.forEach(room => {
+                if (!room.isOccupied) {
+                    if (room.light) {
+                        room.light = false;
+                        totalSavedCarbon += 0.2;
+                        count++;
+                    }
+                    if (room.ac) {
+                        room.ac = false;
+                        totalSavedCarbon += 0.8;
+                        count++;
+                    }
+                }
+            });
+            renderRooms();
+        }
+
+        // Add a new classroom
+        function addRoom() {
+            const name = prompt("새 구역 이름을 입력하세요 (예: 3학년 2반, 음악2실):");
+            if (name && name.trim() !== "") {
+                const newId = rooms.length ? Math.max(...rooms.map(r => r.id)) + 1 : 1;
+                rooms.push({
+                    id: newId,
+                    name: name.trim(),
+                    isOccupied: false,
+                    light: true,
+                    ac: false
+                });
+                renderRooms();
+            }
+        }
+
+        // AI Simulation mode (Randomly changes occupancy & power states)
+        function toggleSimulation() {
+            const btn = document.getElementById('sim-btn');
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+                btn.innerHTML = `<i class="fa-solid fa-play"></i> AI 시뮬레이션 시작`;
+                btn.classList.remove('bg-red-600', 'hover:bg-red-500');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500');
+            } else {
+                simulationInterval = setInterval(() => {
+                    const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+                    const actions = ['occupancy', 'light', 'ac'];
+                    const randomAction = actions[Math.floor(Math.random() * actions.length)];
+
+                    if (randomAction === 'occupancy') {
+                        randomRoom.isOccupied = !randomRoom.isOccupied;
+                    } else if (randomAction === 'light') {
+                        randomRoom.light = !randomRoom.light;
+                    } else if (randomAction === 'ac') {
+                        randomRoom.ac = !randomRoom.ac;
+                    }
+                    renderRooms();
+                }, 3000);
+
+                btn.innerHTML = `<i class="fa-solid fa-stop"></i> 시뮬레이션 중지`;
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+                btn.classList.add('bg-red-600', 'hover:bg-red-500');
+            }
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            initChart();
+            renderRooms();
+        };
+    </script>
+</body>
+</html>
